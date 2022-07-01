@@ -1,0 +1,4 @@
+logging/
+pat.txt
+.mypy_cache/
+__pycache__/

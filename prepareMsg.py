@@ -90,7 +90,7 @@ def trataPullRequest(logFile, data):
 
 def findCommits(commitUrl, commitId):
 
-    pat = 'NGl1bHU2cWxndzRseWlkZHEyaHhwcjRrZzRtejRqZWV2eHNmNDVleHU0YjJ4MnlkbGhtcQ=='
+    pat = getPat()
     authorization = str(base64.b64encode(bytes(':'+pat, 'ascii')), 'ascii')
 
     headers = {
@@ -145,7 +145,7 @@ def findCommits(commitUrl, commitId):
 
 def findDefaultBranch(repoUrl):
 
-    pat = 'NGl1bHU2cWxndzRseWlkZHEyaHhwcjRrZzRtejRqZWV2eHNmNDVleHU0YjJ4MnlkbGhtcQ=='
+    pat = getPat()
     authorization = str(base64.b64encode(bytes(':'+pat, 'ascii')), 'ascii')
 
     headers = {
@@ -163,3 +163,11 @@ def findDefaultBranch(repoUrl):
     branch = branchPath.split("/")
 
     return branch
+
+
+def getPat():
+
+    with open("pat.txt", "r") as f:
+        pat = f.read().rstrip()
+
+    return pat

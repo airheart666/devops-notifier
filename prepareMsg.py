@@ -1,15 +1,19 @@
 from post import postMsg
 from logger import callLogger
 import json
+import requests
+import base64
+
 
 def eventSwitcher(logFile, eventType, data):
 
-        switcher = {
-            "git.push": trataCodePushed,
+    switcher = {
+            "git.pullrequest.updated": trataPullCompleted,
             "git.pullrequest.created": trataPullRequest
         }
-        msg = switcher[eventType](logFile, data)
-        return msg
+    msg = switcher[eventType](logFile, data)
+    return msg
+
 
 def prepareMsg(logFile, data, webhook):
 
@@ -17,13 +21,6 @@ def prepareMsg(logFile, data, webhook):
     jsonData = json.loads(data)
 
     eventType = jsonData["eventType"]
-
-    print(eventType)
-
-    #if(eventType == "git.push"):
-    #    autor = jsonData["resource"]["pushedBy"]["displayName"]
-    #elif (eventType == "git.pullrequest.created"):
-    #     autor = jsonData["resource"]["createdBy"]["displayName"]
 
     eventMsg = eventSwitcher(logFile, eventType, jsonData)
     print(eventMsg)
@@ -36,48 +33,33 @@ def prepareMsg(logFile, data, webhook):
 
     return post
 
-def trataCodePushed(logFile, data):
+
+def trataPullCompleted(logFile, data):
 
     print("alo push")
 
-    autor = data["resource"]["pushedBy"]["displayName"]
+    autor = data["resource"]["createdBy"]["displayName"]
     repo = data["resource"]["repository"]["name"]
-    branch = data["resource"]["repository"]["defaultBranch"]
-    markdownMsg = data["detailedMessage"]["markdown"]
+    repoUrl = data["resource"]["repository"]["url"]
+    sourceCommitUrl = data["resource"]["lastMergeSourceCommit"]["url"]
+    sourceCommitId = data["resource"]["lastMergeSourceCommit"]["commitId"]
 
-    branch = branch.split("/")
+    branch = findDefaultBranch(repoUrl)
 
-    commits = markdownMsg.split("\r\n* ")
+    eventLine = "\\nMerge realizado no repositório " + repo + ", branch " + \
+        branch[-1] + ", atualizem seus repositórios locais.\\n"
 
-    print(commits)
-
-    eventLine = "\\nMerge realizado no repositório " + repo + ", branch " + branch[-1] + ", atualizem seus repositórios locais.\\n"
-
-    commitList = []
-    commitIdList = []
-    commitUrlList = []
-    commitTxt = ''
-    i = 0
-    for commit in data["resource"]["commits"]:
-        commitList.append(commit["comment"])
-        commitIdList.append(commit["commitId"])
-        commitUrlList.append(commit['url'])
-        commitLine = '<' + \
-            str(commitUrlList[i])+'|'+str(commitIdList[i]) + \
-            '> - '+str(commitList[i])
-        commitTxt += (commitLine
-                      if commitTxt == '\n'
-                      else '\n' + commitLine)
-        i += 1
+    commitMsg = findCommits(sourceCommitUrl, sourceCommitId)
 
     msgTxt = str("<users/all>\n"
                  + eventLine
                  + "Autor do merge: "
                  + autor
                  + "\\n\\nCommits inclusos: "
-                 + commitTxt)
+                 + commitMsg)
 
-    return msgTxt;
+    return msgTxt
+
 
 def trataPullRequest(logFile, data):
 
@@ -85,19 +67,99 @@ def trataPullRequest(logFile, data):
 
     autor = data["resource"]["createdBy"]["displayName"]
     repo = data["resource"]["repository"]["name"]
-    #branch = data["resource"]["repository"]["defaultBranch"]
     urlPullRequest = data["resource"]["_links"]["web"]["href"]
+    sourceCommitUrl = data["resource"]["lastMergeSourceCommit"]["url"]
+    sourceCommitId = data["resource"]["lastMergeSourceCommit"]["commitId"]
 
-    #branch = branch.split("/")
+    commitMsg = findCommits(sourceCommitUrl, sourceCommitId)
 
-    #eventLine = "\\Merge request criado para o repositório " + repo + ", branch " + branch[-1] + ", necessário Code Review.\\n"
-    eventLine = "\\Merge request criado para o repositório " + repo + ", necessário Code Review.\\n"
+    eventLine = "\\Merge request criado para o repositório " + \
+        repo + ", necessário Code Review.\\n"
 
     msgTxt = str("<users/all>\n"
                  + eventLine
                  + "Criado por: "
                  + autor
                  + "\\nLink para Code Review: "
-                 + urlPullRequest)
+                 + urlPullRequest
+                 + "\\n\\nCommits inclusos: "
+                 + commitMsg)
 
-    return msgTxt;
+    return msgTxt
+
+
+def findCommits(commitUrl, commitId):
+
+    pat = '4iulu6qlgw4lyiddq2hxpr4kg4mz4jeevxsf45exu4b2x2ydlhmq'
+    authorization = str(base64.b64encode(bytes(':'+pat, 'ascii')), 'ascii')
+
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Basic '+authorization
+    }
+
+    commit = requests.get(
+        url=commitUrl,
+        headers=headers
+    )
+
+    commitData = json.loads(commit.text)
+
+    pushId = commitData["push"]["pushId"]
+
+    url = commitUrl.replace('/' + str(commitId), '')
+
+    pushUrl = url + "?pushId=" + str(pushId)
+
+    push = requests.get(
+        url=pushUrl,
+        headers=headers
+    )
+
+    pushData = json.loads(push.text)
+
+    commitList = pushData["value"]
+
+    commitCommentList = []
+    commitIdList = []
+    commitUrlList = []
+    commitTxt = ''
+    i = 0
+    for commit in commitList:
+
+        commitJson = json.loads(str(json.dumps(commitList[i])))
+
+        commitCommentList.append(commitJson["comment"])
+        commitIdList.append(commitJson["commitId"])
+        commitUrlList.append(commitJson["remoteUrl"])
+        commitLine = '<' + \
+            str(commitUrlList[i])+'|'+str(commitIdList[i]) + \
+            '> - '+str(commitCommentList[i])
+        commitTxt += (commitLine
+                      if commitTxt == '\n'
+                      else '\n' + commitLine)
+        i += 1
+
+    return commitTxt
+
+
+def findDefaultBranch(repoUrl):
+
+    pat = '4iulu6qlgw4lyiddq2hxpr4kg4mz4jeevxsf45exu4b2x2ydlhmq'
+    authorization = str(base64.b64encode(bytes(':'+pat, 'ascii')), 'ascii')
+
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Basic '+authorization
+    }
+
+    repo = requests.get(
+        url=repoUrl,
+        headers=headers
+    )
+
+    repoData = json.loads(repo.text)
+    branchPath = repoData["defaultBranch"]
+    branch = branchPath.split("/")
+
+    return branch

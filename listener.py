@@ -1,6 +1,5 @@
 from fastapi import BackgroundTasks, FastAPI, Header
 from prepareMsg import prepareMsg
-#from fastapi.encoders import jsonable_encoder
 import json
 from pydantic import BaseModel
 from logger import callLogger
@@ -42,7 +41,7 @@ async def receive_msg(
     webhook: Union[str, None] = Header(default=None, convert_underscores=False)
 ):
     print(devopsPost)
-    data = json.dumps(devopsPost.__dict__, indent = 4)
+    data = json.dumps(devopsPost.__dict__, indent=4)
     callLogger(logFile, str(data))
     webhookUrl = splitWebhook(webhook)
     task.add_task(callPrepareMsg, str(data), webhookUrl)

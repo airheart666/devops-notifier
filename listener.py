@@ -1,6 +1,7 @@
 from fastapi import BackgroundTasks, FastAPI, Header
 from prepareMsg import prepareMsg
-from fastapi.encoders import jsonable_encoder
+#from fastapi.encoders import jsonable_encoder
+import json
 from pydantic import BaseModel
 from logger import callLogger
 from datetime import datetime
@@ -12,13 +13,15 @@ listener = FastAPI()
 
 
 class devopsPost(BaseModel):
+    eventType: str
     message: dict
+    detailedMessage: dict
     resource: dict
     createdDate: str
 
 
 def callPrepareMsg(data, webhook):
-    callLogger(logFile, "Iniciando preparação de mensagem")
+    callLogger(logFile, "PREPARANDO MENSAGEM")
     prepareMsg(logFile, data, webhook)
 
 
@@ -38,7 +41,8 @@ async def receive_msg(
     devopsPost: devopsPost,
     webhook: Union[str, None] = Header(default=None, convert_underscores=False)
 ):
-    data = jsonable_encoder(devopsPost)
+    print(devopsPost)
+    data = json.dumps(devopsPost.__dict__, indent = 4)
     callLogger(logFile, str(data))
     webhookUrl = splitWebhook(webhook)
     task.add_task(callPrepareMsg, str(data), webhookUrl)

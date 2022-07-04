@@ -1,4 +1,4 @@
-from post import postMsg
+from postMsg import postMsg
 from logger import callLogger
 from eventHandler import eventSwitcher
 import json

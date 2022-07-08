@@ -6,43 +6,14 @@ import json
 def eventSwitcher(logFile, eventType, data):
 
     switcher = {
-            "git.pullrequest.updated": trataPullCompleted,
-            "git.pullrequest.created": trataPullRequest
+            "git.pullrequest.updated.completed": trataPullCompleted,
+            "git.pullrequest.created": trataPullCreated
         }
     msg = switcher[eventType](logFile, data)
     return msg
 
 
-def trataPullCompleted(logFile, data):
-
-    print("alo push")
-
-    autor = data["resource"]["createdBy"]["displayName"]
-    repo = data["resource"]["repository"]["name"]
-    repoUrl = data["resource"]["repository"]["url"]
-    sourceCommitUrl = data["resource"]["lastMergeSourceCommit"]["url"]
-    sourceCommitId = data["resource"]["lastMergeSourceCommit"]["commitId"]
-
-    branch = findDefaultBranch(repoUrl)
-
-    eventLine = "\\nMerge realizado no repositório " + repo + ", branch " + \
-        branch[-1] + ", atualizem seus repositórios locais.\\n"
-
-    commitMsg = findCommits(sourceCommitUrl, sourceCommitId)
-
-    msgTxt = str("<users/all>\n"
-                 + eventLine
-                 + "Autor do merge: "
-                 + autor
-                 + "\\n\\nCommits inclusos: "
-                 + commitMsg)
-
-    return msgTxt
-
-
-def trataPullRequest(logFile, data):
-
-    print("alo pull")
+def trataPullCreated(logFile, data):
 
     autor = data["resource"]["createdBy"]["displayName"]
     repo = data["resource"]["repository"]["name"]
@@ -67,10 +38,62 @@ def trataPullRequest(logFile, data):
     return msgTxt
 
 
+def trataPullCompleted(logFile, data):
+
+    autor = data["resource"]["createdBy"]["displayName"]
+    repo = data["resource"]["repository"]["name"]
+    repoUrl = data["resource"]["repository"]["url"]
+    sourceCommitUrl = data["resource"]["lastMergeSourceCommit"]["url"]
+    sourceCommitId = data["resource"]["lastMergeSourceCommit"]["commitId"]
+
+    branch = findDefaultBranch(repoUrl)
+
+    eventLine = "\\nMerge realizado no repositório " + repo + ", branch " + \
+        branch[-1] + ", atualizem seus repositórios locais.\\n"
+
+    commitMsg = findCommits(sourceCommitUrl, sourceCommitId)
+
+    msgTxt = str("<users/all>\n"
+                 + eventLine
+                 + "Autor do merge: "
+                 + autor
+                 + "\\n\\nCommits inclusos: "
+                 + commitMsg)
+
+    return msgTxt
+
+
+'''
+será q faz sentido notificação pra pull abandonado?
+def trataPullAbandoned(logFile, data):
+
+    autor = data["resource"]["createdBy"]["displayName"]
+    repo = data["resource"]["repository"]["name"]
+    repoUrl = data["resource"]["repository"]["url"]
+    sourceCommitUrl = data["resource"]["lastMergeSourceCommit"]["url"]
+    sourceCommitId = data["resource"]["lastMergeSourceCommit"]["commitId"]
+
+    branch = findDefaultBranch(repoUrl)
+
+    eventLine = "\\nMerge realizado no repositório " + repo + ", branch " +
+                branch[-1] + ", atualizem seus repositórios locais.\\n"
+
+    commitMsg = findCommits(sourceCommitUrl, sourceCommitId)
+
+    msgTxt = str("<users/all>\n"
+                 + eventLine
+                 + "Autor do merge: "
+                 + autor
+                 + "\\n\\nCommits inclusos: "
+                 + commitMsg)
+
+    return msgTxt
+'''
+
+
 def findCommits(commitUrl, commitId):
 
-    pat = getPat()
-    authorization = str(base64.b64encode(bytes(':'+pat, 'ascii')), 'ascii')
+    authorization = getPat()
 
     headers = {
         'Accept': 'application/json',
@@ -124,8 +147,7 @@ def findCommits(commitUrl, commitId):
 
 def findDefaultBranch(repoUrl):
 
-    pat = getPat()
-    authorization = str(base64.b64encode(bytes(':'+pat, 'ascii')), 'ascii')
+    authorization = getPat()
 
     headers = {
         'Accept': 'application/json',
@@ -149,4 +171,6 @@ def getPat():
     with open("pat.txt", "r") as f:
         pat = f.read().rstrip()
 
-    return pat
+    authorization = str(base64.b64encode(bytes(':'+pat, 'ascii')), 'ascii')
+
+    return authorization

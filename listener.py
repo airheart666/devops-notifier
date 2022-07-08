@@ -4,7 +4,6 @@ import json
 from pydantic import BaseModel
 from logger import callLogger
 from datetime import datetime
-from typing import Union
 
 logFile = 'listener_' + (datetime.now()).strftime("%Y-%m-%d")+'.log'
 
@@ -19,9 +18,9 @@ class devopsPost(BaseModel):
     createdDate: str
 
 
-def callPrepareMsg(data, webhook):
+def callPrepareMsg(data, webhook, prefix):
     callLogger(logFile, "PREPARANDO MENSAGEM")
-    prepareMsg(logFile, data, webhook)
+    prepareMsg(logFile, data, webhook, prefix)
 
 
 def splitWebhook(webhookHeader):
@@ -38,11 +37,11 @@ def splitWebhook(webhookHeader):
 async def receive_msg(
     task: BackgroundTasks,
     devopsPost: devopsPost,
-    webhook: Union[str, None] = Header(default=None, convert_underscores=False)
+    webhook: str = Header(None),
+    prefix: str = Header(None)
 ):
-    print(devopsPost)
     data = json.dumps(devopsPost.__dict__, indent=4)
     callLogger(logFile, str(data))
     webhookUrl = splitWebhook(webhook)
-    task.add_task(callPrepareMsg, str(data), webhookUrl)
-    return {"message": "mensagem recebida"}
+    task.add_task(callPrepareMsg, str(data), webhookUrl, prefix)
+    return {"message": "evento recebido"}

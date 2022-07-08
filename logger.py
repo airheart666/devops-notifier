@@ -14,7 +14,7 @@ def logger(logFile, msg):
 def callLogger(logFile, msg):
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    logPath = ROOT_DIR + '\\logging\\'
+    logPath = ROOT_DIR + '/logging/'
 
     fullLogFile = logPath + logFile
 

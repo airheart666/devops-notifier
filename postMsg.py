@@ -8,14 +8,14 @@ def postMsg(logFile, data, webhook):
 
     data = json.dumps(data)
 
-    headers_dict = {
+    headersDict = {
                     'Content-Type': 'application/json',
                     'Encoding': 'utf8'
                     }
 
     doPost = requests.post(
                        reqUrl,
-                       headers=headers_dict,
+                       headers=headersDict,
                        data=json.loads(data).encode('utf8')
                        )
 

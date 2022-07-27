@@ -3,26 +3,33 @@ from logger import callLogger
 import json
 
 
-def postMsg(logFile, data, webhook):
-    reqUrl = webhook
-
+def postMsg(data, webhook):
     data = json.dumps(data)
 
     headersDict = {
                     'Content-Type': 'application/json',
                     'Encoding': 'utf8'
                     }
-
     doPost = requests.post(
-                       reqUrl,
-                       headers=headersDict,
-                       data=json.loads(data).encode('utf8')
-                       )
+                           webhook,
+                           headers=headersDict,
+                           data=json.loads(data).encode('utf8')
+                           )
 
-    callLogger(logFile, "Enviando")
+    logLine = "Realizando POST no webhook: " + webhook
+    callLogger(logLine)
 
-    retorno = doPost.text
+    postResponse = json.dumps(doPost.text, separators=(',', ': '))
+    statusCode = doPost.status_code
 
-    callLogger(logFile, retorno)
+    if(statusCode == 200):
+        responseMsg = "Evento enviado com sucesso!"
+        logLine = "Retorno webhook = " + postResponse
+        callLogger(logLine)
+    else:
+        responseMsg = "Status diferente de 200, necessário validar log..."
+        logLine = "Status diferente de 200:" + \
+            str(statusCode) + "\nvalidar resposta: " + postResponse
+        callLogger(logLine)
 
-    return retorno
+    return responseMsg, statusCode

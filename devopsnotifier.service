@@ -1,0 +1,11 @@
+[Unit]
+Description=Azure DevOps + Google Chat integration tool
+After=multi-user.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/python3 /home/dev/devops-notifier/main.py >> /home/dev/devops-notifier/execution.log
+
+[Install]
+WantedBy=multi-user.target

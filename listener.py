@@ -1,47 +1,61 @@
-from fastapi import BackgroundTasks, FastAPI, Header
+from fastapi import FastAPI, Header, Response
 from prepareMsg import prepareMsg
 import json
 from pydantic import BaseModel
 from logger import callLogger
-from datetime import datetime
-
-logFile = 'listener_' + (datetime.now()).strftime("%Y-%m-%d")+'.log'
 
 listener = FastAPI()
 
 
 class devopsPost(BaseModel):
     eventType: str
-    message: dict
-    detailedMessage: dict
     resource: dict
     createdDate: str
 
 
-def callPrepareMsg(data, webhook, prefix):
-    callLogger(logFile, "PREPARANDO MENSAGEM")
-    prepareMsg(logFile, data, webhook, prefix)
+class response(BaseModel):
+    response: str
+    statusWebhook: int
 
 
-def splitWebhook(webhookHeader):
-    arrayWebhookHeader = webhookHeader.split(';')
-    arrayUrl = []
-    for url in range(len(arrayWebhookHeader)):
-        if(arrayWebhookHeader[url] != ''):
-            arrayUrl.append(arrayWebhookHeader[url])
+def splitHeader(header):
+    arrayHeader = header.split(';')
+    arrayElement = []
+    for element in range(len(arrayHeader)):
+        if(arrayHeader[element] != ''):
+            arrayElement.append(arrayHeader[element])
 
-    return arrayUrl
+    return arrayElement
 
 
-@listener.post("/listener")
+@listener.post("/listener", response_model=response, status_code=200)
 async def receive_msg(
-    task: BackgroundTasks,
+    resposta: Response,
     devopsPost: devopsPost,
     webhook: str = Header(None),
-    prefix: str = Header(None)
+    prefixo: str = Header(None)
 ):
-    data = json.dumps(devopsPost.__dict__, indent=4)
-    callLogger(logFile, str(data))
-    webhookUrl = splitWebhook(webhook)
-    task.add_task(callPrepareMsg, str(data), webhookUrl, prefix)
-    return {"message": "evento recebido"}
+    '''
+    Endpoint POST, recebe o evento do Azure DevOps
+
+    resposta: modelo de resposta que será devolvida ao Azure DevOps
+    devopsPost: recebe o JSON do evento
+    webhook: header que recebe as URL dos webhooks que serão notificados
+    prefixo: header que recebe os prefixos que o Service Hook do Azure DevOps deverá monitorar
+    '''
+    for element in devopsPost.resource:
+        value = str(devopsPost.resource.get(element))
+        if(not value.startswith('{')):
+            valueReplace = value.replace("'", "")
+            valueDict = {element: valueReplace}
+            devopsPost.resource.update(valueDict)
+
+    data = json.dumps(devopsPost.__dict__, separators=(',', ': '))
+    logLine = 'Evento recebido: ' + data
+    callLogger(logLine)
+    webhookUrl = splitHeader(str(webhook))
+    prefixoArray = splitHeader(str(prefixo))
+    #task.add_task(callPrepareMsg, str(data), webhookUrl, prefixoArray)
+    response = prepareMsg(str(data), webhookUrl, prefixoArray)
+    resposta.status_code = response["statusWebhook"]
+    return response

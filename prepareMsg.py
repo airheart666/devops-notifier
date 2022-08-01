@@ -43,7 +43,6 @@ def prepareMsg(data, webhook, prefixo):
                     "response": responseMsg,
                     "statusWebhook": responseStatus
                 }
-                return response
         else:
             logLine = 'Repositório não possui o prefixo ' + \
                 str(prefixo[element])
@@ -52,4 +51,5 @@ def prepareMsg(data, webhook, prefixo):
                 "response": "repo não possui o prefixo correto para este hook",
                 "statusWebhook": 200
                 }
-            return response
+
+    return response
